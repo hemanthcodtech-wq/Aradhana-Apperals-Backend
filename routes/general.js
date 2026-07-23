@@ -70,13 +70,26 @@ router.post('/orders', async (req, res) => {
     const itemsJson = JSON.stringify(items);
     const addressJson = JSON.stringify(address);
     const pMethod = payment_method || 'prepaid';
-    const advancePaid = pMethod === 'cod' ? 100 : (parseFloat(total) || 0);
+    const advancePaid = pMethod === 'cod' ? 1 : (parseFloat(total) || 0);
     
     const result = await pool.query(
       `INSERT INTO orders (order_number, total, items, address, status, payment_method, advance_paid)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [orderNumber, total, itemsJson, addressJson, 'pending', pMethod, advancePaid]
     );
+
+    // Credit vendors
+    const vendorTotals = {};
+    for (const item of items) {
+      if (item.product && item.product.vendor_id) {
+        const vid = item.product.vendor_id;
+        const amt = item.qty * (item.variant?.price || item.product?.price || 0);
+        vendorTotals[vid] = (vendorTotals[vid] || 0) + amt;
+      }
+    }
+    for (const [vid, amt] of Object.entries(vendorTotals)) {
+      await pool.query('UPDATE vendors SET wallet_balance = COALESCE(wallet_balance, 0) + $1 WHERE id = $2', [amt, vid]);
+    }
     
     // Send email to admin
     sendOrderEmailToAdmin(orderNumber, total);

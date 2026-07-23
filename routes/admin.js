@@ -152,26 +152,23 @@ router.get('/products', authMiddleware, adminOnly, async (req, res) => {
 });
 
 router.post('/products', authMiddleware, adminOnly, async (req, res) => {
-    const { name, description, stock, sizes, image_url, images, color, category, model, is_active, is_bestseller, is_trending, is_offer } = req.body;
+  const { name, slug, short_description, description, category, image_url, images, custom_attributes, vendor_id, variants } = req.body;
+  
+  try {
+    const attrs = custom_attributes || {};
+    let price = 0;
+    let stock = 0;
     
-    // Validate sizes
-    if (!sizes || !Array.isArray(sizes) || sizes.length === 0) {
-      return res.status(400).json({ error: 'At least one size with price is required.' });
+    for (const key of Object.keys(attrs)) {
+      if (key.toLowerCase().includes('price')) price = parseFloat(attrs[key]) || price;
+      if (key.toLowerCase().includes('stock') || key.toLowerCase() === 'quantity') stock = parseInt(attrs[key]) || stock;
     }
 
-    try {
     const result = await pool.query(
       `INSERT INTO products 
-       (name, description, stock, sizes, image_url, images, color, category, model, is_active, is_bestseller, is_trending, is_offer) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
-      [
-        name, description, stock, JSON.stringify(sizes), image_url, 
-        JSON.stringify(images || []), color, category, model, 
-        is_active ?? true,
-        is_bestseller ?? false,
-        is_trending ?? false,
-        is_offer ?? false
-      ]
+       (name, slug, short_description, description, category, image_url, images, sizes, custom_attributes, price, stock, vendor_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [name, slug, short_description, description, category, image_url, JSON.stringify(images || []), JSON.stringify(variants || []), JSON.stringify(attrs), price, stock, vendor_id || null]
     );
     res.json({ product: result.rows[0] });
   } catch (err) {
@@ -180,13 +177,20 @@ router.post('/products', authMiddleware, adminOnly, async (req, res) => {
 });
 
 router.put('/products/:id', authMiddleware, adminOnly, async (req, res) => {
-  const { name, description, sizes, stock, image_url, images, color, category, model, is_active, is_bestseller, is_trending, is_offer } = req.body;
+  const { name, slug, short_description, description, category, image_url, images, custom_attributes, vendor_id, variants } = req.body;
   try {
-    const sizesJson = Array.isArray(sizes) ? JSON.stringify(sizes) : '[]';
-    const imagesJson = Array.isArray(images) ? JSON.stringify(images) : (image_url ? JSON.stringify([image_url]) : '[]');
+    const attrs = custom_attributes || {};
+    let price = 0;
+    let stock = 0;
+    
+    for (const key of Object.keys(attrs)) {
+      if (key.toLowerCase().includes('price')) price = parseFloat(attrs[key]) || price;
+      if (key.toLowerCase().includes('stock') || key.toLowerCase() === 'quantity') stock = parseInt(attrs[key]) || stock;
+    }
+
     const result = await pool.query(
-      'UPDATE products SET name=$1, description=$2, sizes=$3, stock=$4, image_url=$5, images=$6, color=$7, category=$8, model=$9, is_active=$10, is_bestseller=$11, is_trending=$12, is_offer=$13 WHERE id=$14 RETURNING *',
-      [name, description, sizesJson, stock, image_url, imagesJson, color, category, model || null, is_active, is_bestseller, is_trending, is_offer, req.params.id]
+      'UPDATE products SET name=$1, slug=$2, short_description=$3, description=$4, category=$5, image_url=$6, images=$7, sizes=$8, custom_attributes=$9, price=$10, stock=$11, vendor_id=$12 WHERE id=$13 RETURNING *',
+      [name, slug, short_description, description, category, image_url, JSON.stringify(images || []), JSON.stringify(variants || []), JSON.stringify(attrs), price, stock, vendor_id || null, req.params.id]
     );
     res.json({ product: result.rows[0] });
   } catch (err) {
@@ -281,12 +285,13 @@ router.get('/categories', authMiddleware, adminOnly, async (req, res) => {
 
 // POST /api/admin/categories
 router.post('/categories', authMiddleware, adminOnly, async (req, res) => {
-  const { name, models, image_url } = req.body;
+  const { name, models, image_url, custom_fields } = req.body;
   try {
     const modelsJson = Array.isArray(models) ? JSON.stringify(models) : '[]';
+    const fieldsJson = Array.isArray(custom_fields) ? JSON.stringify(custom_fields) : '[]';
     const result = await pool.query(
-      'INSERT INTO categories (name, models, image_url) VALUES ($1, $2, $3) RETURNING *',
-      [name, modelsJson, image_url]
+      'INSERT INTO categories (name, models, image_url, custom_fields) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, modelsJson, image_url, fieldsJson]
     );
     res.json({ category: result.rows[0] });
   } catch (err) {
@@ -297,12 +302,13 @@ router.post('/categories', authMiddleware, adminOnly, async (req, res) => {
 
 // PUT /api/admin/categories/:id
 router.put('/categories/:id', authMiddleware, adminOnly, async (req, res) => {
-  const { name, models, image_url } = req.body;
+  const { name, models, image_url, custom_fields } = req.body;
   try {
     const modelsJson = Array.isArray(models) ? JSON.stringify(models) : '[]';
+    const fieldsJson = Array.isArray(custom_fields) ? JSON.stringify(custom_fields) : '[]';
     const result = await pool.query(
-      'UPDATE categories SET name=$1, models=$2, image_url=$3 WHERE id=$4 RETURNING *',
-      [name, modelsJson, image_url, req.params.id]
+      'UPDATE categories SET name=$1, models=$2, image_url=$3, custom_fields=$4 WHERE id=$5 RETURNING *',
+      [name, modelsJson, image_url, fieldsJson, req.params.id]
     );
     res.json({ category: result.rows[0] });
   } catch (err) {
@@ -317,6 +323,90 @@ router.delete('/categories/:id', authMiddleware, adminOnly, async (req, res) => 
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// --- VENDORS ---
+router.get('/vendors', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, name, store_name, email, phone, address, status, wallet_balance, created_at FROM vendors ORDER BY created_at DESC');
+    res.json({ vendors: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/vendors/:id/status', authMiddleware, adminOnly, async (req, res) => {
+  const { status } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE vendors SET status=$1 WHERE id=$2 RETURNING id, name, store_name, email, status',
+      [status, req.params.id]
+    );
+    res.json({ vendor: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/vendor-products', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT p.*, v.store_name, v.email as vendor_email 
+      FROM products p 
+      JOIN vendors v ON p.vendor_id = v.id 
+      ORDER BY p.created_at DESC
+    `);
+    res.json({ products: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/vendor-orders', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    // Fetch all orders and filter those that contain vendor products
+    const result = await pool.query('SELECT * FROM orders ORDER BY created_at DESC');
+    const vendorOrders = [];
+
+    result.rows.forEach(order => {
+      let items = [];
+      try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
+      
+      const vendorItems = items.filter(item => item.product && item.product.vendor_id);
+      if (vendorItems.length > 0) {
+        order.vendor_items = vendorItems;
+        order.vendors_involved = [...new Set(vendorItems.map(i => i.product.vendor_id))];
+        vendorOrders.push(order);
+      }
+    });
+
+    res.json({ orders: vendorOrders });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/vendors/:id/payout', authMiddleware, adminOnly, async (req, res) => {
+  const { amount } = req.body;
+  if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+
+  try {
+    // Deduct amount from vendor wallet
+    const vendorRes = await pool.query('SELECT wallet_balance FROM vendors WHERE id=$1', [req.params.id]);
+    if (vendorRes.rows.length === 0) return res.status(404).json({ error: 'Vendor not found' });
+    
+    let currentBalance = parseFloat(vendorRes.rows[0].wallet_balance) || 0;
+    if (currentBalance < amount) return res.status(400).json({ error: 'Insufficient wallet balance' });
+
+    const result = await pool.query(
+      'UPDATE vendors SET wallet_balance = wallet_balance - $1 WHERE id = $2 RETURNING id, name, wallet_balance',
+      [amount, req.params.id]
+    );
+
+    res.json({ message: 'Payout successful', vendor: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

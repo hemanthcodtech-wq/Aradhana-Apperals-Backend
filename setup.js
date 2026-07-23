@@ -16,6 +16,19 @@ async function setup() {
 
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
 
+    CREATE TABLE IF NOT EXISTS vendors (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(150),
+      store_name VARCHAR(150),
+      email VARCHAR(150) UNIQUE NOT NULL,
+      phone VARCHAR(20),
+      password_hash VARCHAR(255),
+      address TEXT,
+      status VARCHAR(50) DEFAULT 'pending',
+      wallet_balance NUMERIC(10,2) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS otps (
       id SERIAL PRIMARY KEY,
       email VARCHAR(150) NOT NULL,
@@ -64,8 +77,43 @@ async function setup() {
       is_bestseller BOOLEAN DEFAULT FALSE,
       is_trending BOOLEAN DEFAULT FALSE,
       is_offer BOOLEAN DEFAULT FALSE,
+      badge VARCHAR(100),
+      spice_level INTEGER DEFAULT 0,
+      price_unit VARCHAR(50),
+      price NUMERIC(10,2),
+      mrp NUMERIC(10,2),
+      coupon_applicable BOOLEAN DEFAULT TRUE,
+      sku VARCHAR(100),
+      slug VARCHAR(255) UNIQUE,
+      short_description TEXT,
+      brand VARCHAR(150),
+      subcategory VARCHAR(150),
+      stock_status VARCHAR(50) DEFAULT 'In Stock',
+      status VARCHAR(50) DEFAULT 'Published',
+      discount_percent NUMERIC(5,2),
+      cost_price NUMERIC(10,2),
+      gst_percent NUMERIC(5,2),
+      hsn_code VARCHAR(50),
+      low_stock_alert INTEGER DEFAULT 10,
+      min_order_qty INTEGER DEFAULT 1,
+      max_order_qty INTEGER,
+      weight VARCHAR(50),
+      length VARCHAR(50),
+      width VARCHAR(50),
+      height VARCHAR(50),
+      material VARCHAR(100),
+      barcode VARCHAR(100),
+      warranty VARCHAR(100),
+      return_policy VARCHAR(255),
+      replacement_policy VARCHAR(255),
+      shipping_charge NUMERIC(10,2),
+      free_shipping BOOLEAN DEFAULT FALSE,
+      cod_available BOOLEAN DEFAULT FALSE,
+      custom_attributes JSONB DEFAULT '{}',
       created_at TIMESTAMP DEFAULT NOW()
     );
+
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES vendors(id) ON DELETE SET NULL;
 
     CREATE TABLE IF NOT EXISTS banners (
       id SERIAL PRIMARY KEY,
@@ -91,6 +139,7 @@ async function setup() {
       id SERIAL PRIMARY KEY,
       name VARCHAR(150) NOT NULL,
       models JSONB DEFAULT '[]',
+      custom_fields JSONB DEFAULT '[]',
       image_url TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     );
