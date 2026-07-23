@@ -15,21 +15,161 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-async function sendOrderEmailToAdmin(orderNumber, total) {
+async function sendOrderEmailToAdmin(orderNumber, total, address, items, paymentMethod) {
   try {
+    const addr = typeof address === 'string' ? JSON.parse(address) : address;
+    const itemsList = (typeof items === 'string' ? JSON.parse(items) : items) || [];
+    const itemsHtml = itemsList.map(item => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${item.product?.name || 'Product'}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${item.variant?.color ? item.variant.color + ' / ' : ''}${item.variant?.size || '-'}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">${item.qty}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">₹${(item.qty * (item.variant?.price || item.product?.price || 0)).toLocaleString()}</td>
+      </tr>
+    `).join('');
+
     await transporter.sendMail({
-      from: `"Moksha Mandir" <${process.env.EMAIL_USER}>`,
-      to: 'sakethkotha48@gmail.com',
-      subject: `New Order Received - ${orderNumber}`,
+      from: `"Indbasket" <${process.env.EMAIL_USER}>`,
+      to: process.env.EMAIL_USER,
+      subject: `🛒 New Order Received - ${orderNumber}`,
       html: `
-        <h2>New Order Placed (Auth User)!</h2>
-        <p><strong>Order Number:</strong> ${orderNumber}</p>
-        <p><strong>Total Amount:</strong> ₹${total}</p>
-        <p>Please check the admin dashboard for more details.</p>
+        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+          <div style="background:linear-gradient(135deg,#fe6603,#ff8534);padding:24px;text-align:center;">
+            <h1 style="color:#fff;margin:0;font-size:22px;">New Order Received!</h1>
+            <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:14px;">${orderNumber}</p>
+          </div>
+          <div style="padding:24px;">
+            <h3 style="margin:0 0 12px;color:#111;">Customer Details</h3>
+            <p style="margin:4px 0;color:#555;"><strong>${addr?.name || 'Customer'}</strong> &middot; ${addr?.mobile || ''}</p>
+            <p style="margin:4px 0;color:#555;">${addr?.addressLine1 || ''} ${addr?.addressLine2 || ''}, ${addr?.city || ''}, ${addr?.state || ''} - ${addr?.pincode || ''}</p>
+            <hr style="border:none;border-top:1px solid #eee;margin:16px 0;">
+            <h3 style="margin:0 0 12px;color:#111;">Order Items</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <tr style="background:#f9fafb;"><th style="padding:8px 12px;text-align:left;">Product</th><th style="padding:8px 12px;text-align:left;">Variant</th><th style="padding:8px 12px;text-align:center;">Qty</th><th style="padding:8px 12px;text-align:right;">Amount</th></tr>
+              ${itemsHtml}
+            </table>
+            <div style="text-align:right;margin-top:12px;font-size:18px;font-weight:bold;color:#111;">Total: ₹${parseFloat(total).toLocaleString()}</div>
+            <p style="margin-top:8px;text-align:right;font-size:12px;color:#888;">Payment: ${paymentMethod === 'cod' ? 'Cash on Delivery' : 'Prepaid (Online)'}</p>
+          </div>
+        </div>
       `
     });
   } catch (err) {
-    console.error('Email send failed:', err);
+    console.error('Admin email send failed:', err);
+  }
+}
+
+async function sendOrderEmailToCustomer(email, orderNumber, total, address, items, paymentMethod) {
+  if (!email) return;
+  try {
+    const addr = typeof address === 'string' ? JSON.parse(address) : address;
+    const itemsList = (typeof items === 'string' ? JSON.parse(items) : items) || [];
+    const itemsHtml = itemsList.map(item => `
+      <tr>
+        <td style="padding:10px 12px;border-bottom:1px solid #f3f4f6;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <img src="${item.product?.image_url || item.product?.images?.[0] || ''}" alt="" style="width:48px;height:48px;border-radius:8px;object-fit:cover;" />
+            <div>
+              <p style="margin:0;font-weight:600;color:#111;">${item.product?.name || 'Product'}</p>
+              <p style="margin:2px 0 0;font-size:12px;color:#888;">${item.variant?.color ? item.variant.color + ' / ' : ''}${item.variant?.size || ''}</p>
+            </div>
+          </div>
+        </td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f3f4f6;text-align:center;">${item.qty}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600;">₹${(item.qty * (item.variant?.price || item.product?.price || 0)).toLocaleString()}</td>
+      </tr>
+    `).join('');
+
+    await transporter.sendMail({
+      from: `"Indbasket" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `✅ Order Confirmed - ${orderNumber}`,
+      html: `
+        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+          <div style="background:linear-gradient(135deg,#10b981,#059669);padding:28px;text-align:center;">
+            <div style="font-size:40px;margin-bottom:8px;">✅</div>
+            <h1 style="color:#fff;margin:0;font-size:22px;">Order Confirmed!</h1>
+            <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:14px;">Thank you for your order, ${addr?.name || 'Customer'}!</p>
+          </div>
+          <div style="padding:24px;">
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;margin-bottom:20px;text-align:center;">
+              <p style="margin:0;font-size:13px;color:#166534;">Order Number</p>
+              <p style="margin:4px 0 0;font-size:18px;font-weight:bold;color:#111;letter-spacing:1px;">${orderNumber}</p>
+            </div>
+            <h3 style="margin:0 0 12px;color:#111;font-size:15px;">Items Ordered</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <tr style="background:#f9fafb;"><th style="padding:8px 12px;text-align:left;">Product</th><th style="padding:8px 12px;text-align:center;">Qty</th><th style="padding:8px 12px;text-align:right;">Amount</th></tr>
+              ${itemsHtml}
+            </table>
+            <div style="background:#f9fafb;border-radius:8px;padding:14px;margin-top:16px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">Payment</span><span style="font-weight:600;">${paymentMethod === 'cod' ? 'Cash on Delivery' : 'Paid Online'}</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:18px;"><span style="font-weight:bold;color:#111;">Total</span><span style="font-weight:bold;color:#059669;">₹${parseFloat(total).toLocaleString()}</span></div>
+            </div>
+            <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+            <h3 style="margin:0 0 8px;color:#111;font-size:15px;">Delivering To</h3>
+            <p style="margin:4px 0;color:#555;line-height:1.6;">${addr?.name || ''}<br>${addr?.addressLine1 || ''} ${addr?.addressLine2 || ''}<br>${addr?.city || ''}, ${addr?.state || ''} - ${addr?.pincode || ''}<br>📞 ${addr?.mobile || ''}</p>
+            <div style="text-align:center;margin-top:24px;">
+              <p style="color:#888;font-size:12px;margin:0;">Need help? Reply to this email or contact us.</p>
+            </div>
+          </div>
+        </div>
+      `
+    });
+  } catch (err) {
+    console.error('Customer email send failed:', err);
+  }
+}
+
+async function sendOrderEmailToVendor(vendorEmail, vendorName, orderNumber, vendorItems, vendorTotal, address, paymentMethod) {
+  if (!vendorEmail) return;
+  try {
+    const addr = typeof address === 'string' ? JSON.parse(address) : address;
+    const itemsHtml = vendorItems.map(item => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${item.product?.name || 'Product'}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${item.variant?.color ? item.variant.color + ' / ' : ''}${item.variant?.size || '-'}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">${item.qty}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">₹${(item.qty * (item.variant?.price || item.product?.price || 0)).toLocaleString()}</td>
+      </tr>
+    `).join('');
+
+    await transporter.sendMail({
+      from: `"Indbasket" <${process.env.EMAIL_USER}>`,
+      to: vendorEmail,
+      subject: `🎉 New Order for Your Products - ${orderNumber}`,
+      html: `
+        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+          <div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);padding:28px;text-align:center;">
+            <div style="font-size:40px;margin-bottom:8px;">🎉</div>
+            <h1 style="color:#fff;margin:0;font-size:22px;">New Order for Your Products!</h1>
+            <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:14px;">Hi ${vendorName}, you have a new sale!</p>
+          </div>
+          <div style="padding:24px;">
+            <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:14px;margin-bottom:20px;text-align:center;">
+              <p style="margin:0;font-size:13px;color:#5b21b6;">Order Number</p>
+              <p style="margin:4px 0 0;font-size:18px;font-weight:bold;color:#111;letter-spacing:1px;">${orderNumber}</p>
+            </div>
+            <h3 style="margin:0 0 12px;color:#111;font-size:15px;">Your Products in This Order</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <tr style="background:#f9fafb;"><th style="padding:8px 12px;text-align:left;">Product</th><th style="padding:8px 12px;text-align:left;">Variant</th><th style="padding:8px 12px;text-align:center;">Qty</th><th style="padding:8px 12px;text-align:right;">Amount</th></tr>
+              ${itemsHtml}
+            </table>
+            <div style="background:#f5f3ff;border-radius:8px;padding:14px;margin-top:16px;">
+              <div style="display:flex;justify-content:space-between;font-size:18px;"><span style="font-weight:bold;color:#111;">Your Earnings</span><span style="font-weight:bold;color:#7c3aed;">₹${vendorTotal.toLocaleString()}</span></div>
+              <p style="margin:8px 0 0;font-size:12px;color:#888;">This amount has been credited to your virtual wallet.</p>
+            </div>
+            <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+            <h3 style="margin:0 0 8px;color:#111;font-size:15px;">Ship To</h3>
+            <p style="margin:4px 0;color:#555;line-height:1.6;">${addr?.name || ''}<br>${addr?.addressLine1 || ''} ${addr?.addressLine2 || ''}<br>${addr?.city || ''}, ${addr?.state || ''} - ${addr?.pincode || ''}<br>📞 ${addr?.mobile || ''}</p>
+            <div style="text-align:center;margin-top:24px;">
+              <p style="color:#888;font-size:12px;margin:0;">Please prepare and ship the order promptly. Check your vendor dashboard for details.</p>
+            </div>
+          </div>
+        </div>
+      `
+    });
+  } catch (err) {
+    console.error('Vendor email send failed:', err);
   }
 }
 
@@ -218,21 +358,35 @@ router.post('/orders', authMiddleware, async (req, res) => {
       [req.user.id, orderNumber, total, itemsJson, addressJson, 'pending', pMethod, advancePaid]
     );
 
-    // Credit vendors
-    const vendorTotals = {};
+    // Credit vendors, record transactions, send vendor emails
+    const vendorData = {};
     for (const item of items) {
       if (item.product && item.product.vendor_id) {
         const vid = item.product.vendor_id;
         const amt = item.qty * (item.variant?.price || item.product?.price || 0);
-        vendorTotals[vid] = (vendorTotals[vid] || 0) + amt;
+        if (!vendorData[vid]) vendorData[vid] = { total: 0, items: [] };
+        vendorData[vid].total += amt;
+        vendorData[vid].items.push(item);
       }
     }
-    for (const [vid, amt] of Object.entries(vendorTotals)) {
-      await pool.query('UPDATE vendors SET wallet_balance = COALESCE(wallet_balance, 0) + $1 WHERE id = $2', [amt, vid]);
+    for (const [vid, data] of Object.entries(vendorData)) {
+      await pool.query('UPDATE vendors SET wallet_balance = COALESCE(wallet_balance, 0) + $1 WHERE id = $2', [data.total, vid]);
+      await pool.query(
+        'INSERT INTO vendor_transactions (vendor_id, type, amount, order_number, description) VALUES ($1, $2, $3, $4, $5)',
+        [vid, 'credit', data.total, orderNumber, `Order ${orderNumber} - ${data.items.length} item(s)`]
+      );
+      const vendorRes = await pool.query('SELECT name, email FROM vendors WHERE id = $1', [vid]);
+      if (vendorRes.rows[0]) {
+        sendOrderEmailToVendor(vendorRes.rows[0].email, vendorRes.rows[0].name, orderNumber, data.items, data.total, address, pMethod);
+      }
     }
     
-    // Send email to admin
-    sendOrderEmailToAdmin(orderNumber, total);
+    // Send emails
+    sendOrderEmailToAdmin(orderNumber, total, address, items, pMethod);
+    // Fetch user email for customer confirmation
+    const userRes = await pool.query('SELECT email FROM users WHERE id = $1', [req.user.id]);
+    const userEmail = userRes.rows[0]?.email || address?.email;
+    sendOrderEmailToCustomer(userEmail, orderNumber, total, address, items, pMethod);
 
     res.json({ success: true, order: result.rows[0] });
   } catch (err) {

@@ -166,4 +166,17 @@ router.get('/categories', async (req, res) => {
   }
 });
 
+// --- Vendor Transactions (Payout History) ---
+router.get('/transactions', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM vendor_transactions WHERE vendor_id = $1 ORDER BY created_at DESC',
+      [req.vendorId]
+    );
+    res.json({ transactions: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

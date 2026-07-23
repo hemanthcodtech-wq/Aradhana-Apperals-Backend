@@ -404,7 +404,28 @@ router.post('/vendors/:id/payout', authMiddleware, adminOnly, async (req, res) =
       [amount, req.params.id]
     );
 
+    // Record the payout transaction
+    await pool.query(
+      'INSERT INTO vendor_transactions (vendor_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+      [req.params.id, 'debit', amount, `Payout of ₹${parseFloat(amount).toLocaleString()} processed to bank account`]
+    );
+
     res.json({ message: 'Payout successful', vendor: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/vendor-payouts - All vendor transactions for admin
+router.get('/vendor-payouts', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT vt.*, v.name as vendor_name, v.store_name 
+      FROM vendor_transactions vt 
+      LEFT JOIN vendors v ON vt.vendor_id = v.id 
+      ORDER BY vt.created_at DESC
+    `);
+    res.json({ payouts: result.rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
