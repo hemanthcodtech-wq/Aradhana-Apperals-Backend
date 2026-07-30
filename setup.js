@@ -143,6 +143,31 @@ async function setup() {
       image_url TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS offers (
+      id SERIAL PRIMARY KEY,
+      code VARCHAR(50) UNIQUE NOT NULL,
+      discount_percent NUMERIC(5,2) NOT NULL,
+      scope VARCHAR(20) DEFAULT 'all',
+      category_ids JSONB DEFAULT '[]',
+      product_ids JSONB DEFAULT '[]',
+      min_type VARCHAR(10) DEFAULT 'amount',
+      min_value NUMERIC(10,2) DEFAULT 0,
+      usage_type VARCHAR(20) DEFAULT 'multiple',
+      expires_at TIMESTAMP,
+      is_active BOOLEAN DEFAULT TRUE,
+      created_by VARCHAR(20) DEFAULT 'admin',
+      vendor_id INTEGER REFERENCES vendors(id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS offer_usages (
+      id SERIAL PRIMARY KEY,
+      offer_id INTEGER REFERENCES offers(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      used_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(offer_id, user_id)
+    );
   `);
   console.log('✅ Tables created');
 

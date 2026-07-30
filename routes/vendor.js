@@ -179,4 +179,62 @@ router.get('/transactions', async (req, res) => {
   }
 });
 
+// --- Vendor Support Agents ---
+const bcrypt = require('bcryptjs');
+
+// GET /api/vendor/support-agents
+router.get('/support-agents', async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, name, email, is_active, created_at FROM support_agents WHERE scope='vendor' AND vendor_id=$1 ORDER BY created_at DESC",
+      [req.vendorId]
+    );
+    res.json({ agents: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/vendor/support-agents
+router.post('/support-agents', async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) return res.status(400).json({ error: 'name, email and password required' });
+  try {
+    const existing = await pool.query('SELECT id FROM support_agents WHERE email = $1', [email]);
+    if (existing.rows.length > 0) return res.status(400).json({ error: 'Email already exists' });
+    const password_hash = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      "INSERT INTO support_agents (name, email, password_hash, scope, vendor_id) VALUES ($1, $2, $3, 'vendor', $4) RETURNING id, name, email, is_active, created_at",
+      [name, email, password_hash, req.vendorId]
+    );
+    res.json({ agent: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/vendor/support-agents/:id/toggle
+router.put('/support-agents/:id/toggle', async (req, res) => {
+  try {
+    const result = await pool.query(
+      "UPDATE support_agents SET is_active = NOT is_active WHERE id=$1 AND scope='vendor' AND vendor_id=$2 RETURNING id, name, email, is_active",
+      [req.params.id, req.vendorId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Agent not found' });
+    res.json({ agent: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/vendor/support-agents/:id
+router.delete('/support-agents/:id', async (req, res) => {
+  try {
+    await pool.query("DELETE FROM support_agents WHERE id=$1 AND scope='vendor' AND vendor_id=$2", [req.params.id, req.vendorId]);
+    res.json({ message: 'Agent deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

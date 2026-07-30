@@ -190,7 +190,21 @@ router.get('/categories', async (req, res) => {
 // GET /api/general/products
 router.get('/products', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM products WHERE is_active = true ORDER BY id DESC');
+    // Exclude products from vendors whose subscription has expired
+    const result = await pool.query(`
+      SELECT p.* FROM products p
+      WHERE p.is_active = true
+      AND (
+        p.vendor_id IS NULL
+        OR EXISTS (
+          SELECT 1 FROM vendors v
+          WHERE v.id = p.vendor_id
+          AND v.subscription_expires_at IS NOT NULL
+          AND v.subscription_expires_at > NOW()
+        )
+      )
+      ORDER BY p.id DESC
+    `);
     res.json({ products: result.rows });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -223,6 +237,13 @@ router.post('/orders', async (req, res) => {
     for (const item of items) {
       if (item.product && item.product.vendor_id) {
         const vid = item.product.vendor_id;
+        // Skip crediting if vendor subscription has expired
+        const subCheck = await pool.query(
+          'SELECT subscription_expires_at FROM vendors WHERE id=$1',
+          [vid]
+        );
+        const expiry = subCheck.rows[0]?.subscription_expires_at;
+        if (expiry && new Date(expiry) < new Date()) continue;
         const amt = item.qty * (item.variant?.price || item.product?.price || 0);
         if (!vendorData[vid]) vendorData[vid] = { total: 0, items: [] };
         vendorData[vid].total += amt;
@@ -302,6 +323,60 @@ router.post('/razorpay/verify', async (req, res) => {
   } catch (err) {
     console.error('Razorpay verification error:', err);
     res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// POST /api/general/coupon/verify
+router.post('/coupon/verify', async (req, res) => {
+  const { code, subtotal, qty } = req.body;
+  if (!code) return res.status(400).json({ error: 'Coupon code is required' });
+
+  try {
+    // Check admin coupons table first
+    const adminResult = await pool.query(
+      'SELECT *, \'admin\' as source FROM coupons WHERE UPPER(code) = UPPER($1) AND is_active = true',
+      [code]
+    );
+
+    // Check vendor offers table (offer_type = coupon)
+    const vendorResult = await pool.query(
+      "SELECT *, 'vendor' as source FROM offers WHERE UPPER(code) = UPPER($1) AND is_active = true AND offer_type = 'coupon'",
+      [code]
+    );
+
+    const row = adminResult.rows[0] || vendorResult.rows[0];
+    if (!row) return res.status(400).json({ error: 'Invalid or expired coupon' });
+
+    // Check expiry
+    if (row.expires_at && new Date(row.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'This coupon has expired' });
+    }
+
+    // Restriction check
+    const restrictionType = row.restriction_type || row.min_type || 'min_amount';
+    const restrictionValue = parseFloat(row.restriction_value || row.min_value || row.min_order_value || 0);
+
+    if ((restrictionType === 'min_qty' || restrictionType === 'qty') && qty < restrictionValue) {
+      return res.status(400).json({ error: `Minimum ${restrictionValue} items required` });
+    }
+    if (restrictionType !== 'min_qty' && restrictionType !== 'qty' && subtotal < restrictionValue) {
+      return res.status(400).json({ error: `Minimum order amount ₹${restrictionValue} required` });
+    }
+
+    // Normalise coupon fields for frontend
+    const discountType = row.discount_type || 'percent';
+    const coupon = {
+      ...row,
+      code: row.code,
+      discount_type: discountType,
+      type: discountType,
+      value: parseFloat(row.discount_value || row.discount_percent || 0),
+      discount_value: parseFloat(row.discount_value || row.discount_percent || 0),
+    };
+
+    res.json({ coupon });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

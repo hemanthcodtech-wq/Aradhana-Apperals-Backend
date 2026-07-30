@@ -250,11 +250,39 @@ router.get('/coupons', authMiddleware, adminOnly, async (req, res) => {
 });
 
 router.post('/coupons', authMiddleware, adminOnly, async (req, res) => {
-  const { code, discount_type, discount_value, min_order_value, is_active, expires_at } = req.body;
+  const { code, type, discount_type, value, discount_value, restriction_type, restriction_value, min_order_value, usage, usage_type, is_active, expires_at } = req.body;
   try {
     const result = await pool.query(
       'INSERT INTO coupons (code, discount_type, discount_value, min_order_value, is_active, expires_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [code, discount_type || 'percentage', discount_value, min_order_value || 0, is_active ?? true, expires_at]
+      [
+        code,
+        discount_type || type || 'percentage',
+        discount_value || value,
+        min_order_value || restriction_value || 0,
+        is_active ?? true,
+        expires_at || null
+      ]
+    );
+    res.json({ coupon: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/coupons/:id', authMiddleware, adminOnly, async (req, res) => {
+  const { code, type, discount_type, value, discount_value, restriction_type, restriction_value, min_order_value, usage, is_active, expires_at } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE coupons SET code=$1, discount_type=$2, discount_value=$3, min_order_value=$4, is_active=$5, expires_at=$6 WHERE id=$7 RETURNING *',
+      [
+        code,
+        discount_type || type || 'percentage',
+        discount_value || value,
+        min_order_value || restriction_value || 0,
+        is_active ?? true,
+        expires_at || null,
+        req.params.id
+      ]
     );
     res.json({ coupon: result.rows[0] });
   } catch (err) {
@@ -426,6 +454,63 @@ router.get('/vendor-payouts', authMiddleware, adminOnly, async (req, res) => {
       ORDER BY vt.created_at DESC
     `);
     res.json({ payouts: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- SUPPORT AGENTS ---
+const bcrypt = require('bcryptjs');
+
+// GET /api/admin/support-agents  (scope=admin only)
+router.get('/support-agents', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, name, email, is_active, created_at FROM support_agents WHERE scope='admin' ORDER BY created_at DESC"
+    );
+    res.json({ agents: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/support-agents
+router.post('/support-agents', authMiddleware, adminOnly, async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) return res.status(400).json({ error: 'name, email and password required' });
+  try {
+    const existing = await pool.query('SELECT id FROM support_agents WHERE email = $1', [email]);
+    if (existing.rows.length > 0) return res.status(400).json({ error: 'Email already exists' });
+    const password_hash = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      "INSERT INTO support_agents (name, email, password_hash, scope) VALUES ($1, $2, $3, 'admin') RETURNING id, name, email, is_active, created_at",
+      [name, email, password_hash]
+    );
+    res.json({ agent: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/support-agents/:id/toggle
+router.put('/support-agents/:id/toggle', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "UPDATE support_agents SET is_active = NOT is_active WHERE id = $1 AND scope='admin' RETURNING id, name, email, is_active",
+      [req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Agent not found' });
+    res.json({ agent: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/support-agents/:id
+router.delete('/support-agents/:id', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM support_agents WHERE id = $1 AND scope='admin'", [req.params.id]);
+    res.json({ message: 'Agent deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

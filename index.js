@@ -32,6 +32,10 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/admin/upload', require('./routes/upload'));
 app.use('/api/vendorAuth', require('./routes/vendorAuth').router);
 app.use('/api/vendor', require('./routes/vendor'));
+app.use('/api/supportAuth', require('./routes/supportAuth').router);
+app.use('/api/support', require('./routes/support'));
+app.use('/api/subscriptions', require('./routes/subscriptions'));
+app.use('/api/offers', require('./routes/offers'));
 
 app.use((req, res) => res.status(404).json({ error: 'API route not found' }));
 

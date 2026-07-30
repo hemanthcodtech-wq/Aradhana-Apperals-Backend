@@ -35,10 +35,15 @@ async function sendOTPEmail(email, otp, name) {
 
 // Registration
 router.post('/signup', async (req, res) => {
-  const { name, store_name, email, phone, password, address } = req.body;
+  const { name, store_name, email, phone, password, address, plan_id, payment_id } = req.body;
   if (!email || !password || !store_name) return res.status(400).json({ error: 'Missing required fields' });
+  if (!plan_id || !payment_id) return res.status(400).json({ error: 'Subscription payment required' });
 
   try {
+    // Verify plan exists
+    const planRes = await pool.query('SELECT * FROM subscription_plans WHERE id=$1 AND is_active=TRUE', [plan_id]);
+    if (!planRes.rows.length) return res.status(400).json({ error: 'Invalid subscription plan' });
+
     const check = await pool.query('SELECT id, status FROM vendors WHERE email = $1', [email]);
     if (check.rows.length > 0) {
       if (check.rows[0].status !== 'unverified') {
@@ -52,20 +57,19 @@ router.post('/signup', async (req, res) => {
 
     if (check.rows.length > 0) {
       await pool.query(
-        'UPDATE vendors SET name=$1, store_name=$2, phone=$3, password_hash=$4, address=$5 WHERE email=$6',
-        [name, store_name, phone, password_hash, address, email]
+        'UPDATE vendors SET name=$1, store_name=$2, phone=$3, password_hash=$4, address=$5, pending_plan_id=$6, pending_payment_id=$7 WHERE email=$8',
+        [name, store_name, phone, password_hash, address, plan_id, payment_id, email]
       );
     } else {
       await pool.query(
-        `INSERT INTO vendors (name, store_name, email, phone, password_hash, address, status)
-         VALUES ($1, $2, $3, $4, $5, $6, 'unverified')`,
-        [name, store_name, email, phone, password_hash, address]
+        `INSERT INTO vendors (name, store_name, email, phone, password_hash, address, status, pending_plan_id, pending_payment_id)
+         VALUES ($1, $2, $3, $4, $5, $6, 'unverified', $7, $8)`,
+        [name, store_name, email, phone, password_hash, address, plan_id, payment_id]
       );
     }
 
     await pool.query('DELETE FROM otps WHERE email=$1', [email]);
     await pool.query('INSERT INTO otps (email, otp, expires_at) VALUES ($1,$2,$3)', [email, otp, expiresAt]);
-
     await sendOTPEmail(email, otp, name);
     res.json({ message: 'OTP sent to your email successfully.' });
   } catch (err) {
@@ -85,10 +89,31 @@ router.post('/verify-otp', async (req, res) => {
     );
     if (!result.rows.length) return res.status(400).json({ error: 'Invalid or expired OTP' });
 
-    // Update vendor status to pending (awaiting admin approval)
+    // Get vendor with pending subscription info
+    const vendorRes = await pool.query('SELECT id, pending_plan_id, pending_payment_id FROM vendors WHERE email=$1', [email]);
+    const vendor = vendorRes.rows[0];
+
+    // Activate subscription if payment was made
+    if (vendor && vendor.pending_plan_id && vendor.pending_payment_id) {
+      const planRes = await pool.query('SELECT * FROM subscription_plans WHERE id=$1', [vendor.pending_plan_id]);
+      if (planRes.rows.length) {
+        const plan = planRes.rows[0];
+        const expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + plan.months);
+        await pool.query(
+          `INSERT INTO vendor_subscriptions (vendor_id, plan_id, plan_name, months, amount, payment_id, starts_at, expires_at)
+           VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7)`,
+          [vendor.id, plan.id, plan.name, plan.months, plan.price, vendor.pending_payment_id, expiresAt]
+        );
+        await pool.query(
+          'UPDATE vendors SET subscription_expires_at=$1, pending_plan_id=NULL, pending_payment_id=NULL WHERE id=$2',
+          [expiresAt, vendor.id]
+        );
+      }
+    }
+
     await pool.query("UPDATE vendors SET status='pending' WHERE email=$1", [email]);
     await pool.query('DELETE FROM otps WHERE email=$1', [email]);
-
     res.json({ message: 'Application verified. Awaiting admin approval.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -140,7 +165,21 @@ const vendorAuthMiddleware = (req, res, next) => {
 // Get current vendor
 router.get('/me', vendorAuthMiddleware, async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, name, store_name, email, phone, address, status, wallet_balance, created_at FROM vendors WHERE id = $1', [req.vendorId]);
+    const result = await pool.query(
+      `SELECT v.id, v.name, v.store_name, v.email, v.phone, v.address, v.status,
+              v.wallet_balance, v.subscription_expires_at, v.created_at,
+              vs.plan_name, vs.months, vs.amount, vs.expires_at as sub_expires_at
+       FROM vendors v
+       LEFT JOIN LATERAL (
+         SELECT plan_name, months, amount, expires_at
+         FROM vendor_subscriptions
+         WHERE vendor_id = v.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) vs ON true
+       WHERE v.id = $1`,
+      [req.vendorId]
+    );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Vendor not found' });
     res.json({ vendor: result.rows[0] });
   } catch (err) {
