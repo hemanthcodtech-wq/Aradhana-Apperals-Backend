@@ -4,10 +4,12 @@ const { authMiddleware } = require('./auth');
 const { vendorAuthMiddleware } = require('./vendorAuth');
 const Razorpay = require('razorpay');
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+function getRazorpay() {
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
 
 function adminOnly(req, res, next) {
   if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin access only' });
@@ -22,7 +24,7 @@ router.post('/create-order', async (req, res) => {
     const planRes = await pool.query('SELECT * FROM subscription_plans WHERE id=$1 AND is_active=TRUE', [plan_id]);
     if (!planRes.rows.length) return res.status(404).json({ error: 'Plan not found' });
     const plan = planRes.rows[0];
-    const order = await razorpay.orders.create({
+    const order = await getRazorpay().orders.create({
       amount: Math.round(plan.price * 100),
       currency: 'INR',
       receipt: `sub_${plan_id}_${Date.now()}`,
