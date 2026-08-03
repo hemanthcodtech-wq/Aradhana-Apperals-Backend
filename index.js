@@ -5,17 +5,18 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://indbasket.vercel.app',
-  // 'https://www.mokshamandir.in',
-  process.env.FRONTEND_URL
-];
-
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, origin);
+    // Allow all vercel.app subdomains, localhost, and any custom domain set via env
+    const allowed = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://indbasket.vercel.app',
+      process.env.FRONTEND_URL,
+    ].filter(Boolean);
+
+    if (!origin || allowed.includes(origin) || /\.vercel\.app$/.test(origin)) {
+      callback(null, origin || '*');
     } else {
       callback(new Error('Not allowed by CORS'));
     }
