@@ -313,13 +313,14 @@ router.get('/categories', authMiddleware, adminOnly, async (req, res) => {
 
 // POST /api/admin/categories
 router.post('/categories', authMiddleware, adminOnly, async (req, res) => {
-  const { name, models, image_url, custom_fields } = req.body;
+  const { name, models, image_url, banner_url, custom_fields, subcategories } = req.body;
   try {
     const modelsJson = Array.isArray(models) ? JSON.stringify(models) : '[]';
     const fieldsJson = Array.isArray(custom_fields) ? JSON.stringify(custom_fields) : '[]';
+    const subsJson = Array.isArray(subcategories) ? JSON.stringify(subcategories) : '[]';
     const result = await pool.query(
-      'INSERT INTO categories (name, models, image_url, custom_fields) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name, modelsJson, image_url, fieldsJson]
+      'INSERT INTO categories (name, models, image_url, banner_url, custom_fields, subcategories) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [name, modelsJson, image_url, banner_url || null, fieldsJson, subsJson]
     );
     res.json({ category: result.rows[0] });
   } catch (err) {
@@ -330,13 +331,14 @@ router.post('/categories', authMiddleware, adminOnly, async (req, res) => {
 
 // PUT /api/admin/categories/:id
 router.put('/categories/:id', authMiddleware, adminOnly, async (req, res) => {
-  const { name, models, image_url, custom_fields } = req.body;
+  const { name, models, image_url, banner_url, custom_fields, subcategories } = req.body;
   try {
     const modelsJson = Array.isArray(models) ? JSON.stringify(models) : '[]';
     const fieldsJson = Array.isArray(custom_fields) ? JSON.stringify(custom_fields) : '[]';
+    const subsJson = Array.isArray(subcategories) ? JSON.stringify(subcategories) : '[]';
     const result = await pool.query(
-      'UPDATE categories SET name=$1, models=$2, image_url=$3, custom_fields=$4 WHERE id=$5 RETURNING *',
-      [name, modelsJson, image_url, fieldsJson, req.params.id]
+      'UPDATE categories SET name=$1, models=$2, image_url=$3, banner_url=$4, custom_fields=$5, subcategories=$6 WHERE id=$7 RETURNING *',
+      [name, modelsJson, image_url, banner_url || null, fieldsJson, subsJson, req.params.id]
     );
     res.json({ category: result.rows[0] });
   } catch (err) {
@@ -466,7 +468,7 @@ const bcrypt = require('bcryptjs');
 router.get('/support-agents', authMiddleware, adminOnly, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, name, email, is_active, created_at FROM support_agents WHERE scope='admin' ORDER BY created_at DESC"
+      "SELECT id, name, email, is_active, created_at, access_pages FROM support_agents WHERE scope='admin' ORDER BY created_at DESC"
     );
     res.json({ agents: result.rows });
   } catch (err) {
@@ -476,15 +478,16 @@ router.get('/support-agents', authMiddleware, adminOnly, async (req, res) => {
 
 // POST /api/admin/support-agents
 router.post('/support-agents', authMiddleware, adminOnly, async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, access_pages } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'name, email and password required' });
   try {
     const existing = await pool.query('SELECT id FROM support_agents WHERE email = $1', [email]);
     if (existing.rows.length > 0) return res.status(400).json({ error: 'Email already exists' });
     const password_hash = await bcrypt.hash(password, 10);
+    const pages = Array.isArray(access_pages) ? JSON.stringify(access_pages) : '[]';
     const result = await pool.query(
-      "INSERT INTO support_agents (name, email, password_hash, scope) VALUES ($1, $2, $3, 'admin') RETURNING id, name, email, is_active, created_at",
-      [name, email, password_hash]
+      "INSERT INTO support_agents (name, email, password_hash, scope, access_pages) VALUES ($1, $2, $3, 'admin', $4) RETURNING id, name, email, is_active, created_at, access_pages",
+      [name, email, password_hash, pages]
     );
     res.json({ agent: result.rows[0] });
   } catch (err) {
@@ -496,7 +499,7 @@ router.post('/support-agents', authMiddleware, adminOnly, async (req, res) => {
 router.put('/support-agents/:id/toggle', authMiddleware, adminOnly, async (req, res) => {
   try {
     const result = await pool.query(
-      "UPDATE support_agents SET is_active = NOT is_active WHERE id = $1 AND scope='admin' RETURNING id, name, email, is_active",
+      "UPDATE support_agents SET is_active = NOT is_active WHERE id = $1 AND scope='admin' RETURNING id, name, email, is_active, access_pages",
       [req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Agent not found' });
@@ -511,6 +514,53 @@ router.delete('/support-agents/:id', authMiddleware, adminOnly, async (req, res)
   try {
     await pool.query("DELETE FROM support_agents WHERE id = $1 AND scope='admin'", [req.params.id]);
     res.json({ message: 'Agent deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- PRODUCT REQUESTS (Vendor product approvals) ---
+
+// GET /api/admin/product-requests
+router.get('/product-requests', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.*, v.name as vendor_name, v.store_name
+       FROM products p
+       LEFT JOIN vendors v ON p.vendor_id = v.id
+       WHERE p.status = 'pending'
+       ORDER BY p.created_at DESC`
+    );
+    res.json({ products: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/product-requests/:id/approve
+router.put('/product-requests/:id/approve', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `UPDATE products SET status = 'approved', is_active = true WHERE id = $1 RETURNING *`,
+      [req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
+    res.json({ product: result.rows[0], message: 'Product approved and is now live.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/product-requests/:id/reject
+router.put('/product-requests/:id/reject', authMiddleware, adminOnly, async (req, res) => {
+  const { reason } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE products SET status = 'rejected', is_active = false WHERE id = $1 RETURNING *`,
+      [req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
+    res.json({ product: result.rows[0], message: 'Product rejected.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

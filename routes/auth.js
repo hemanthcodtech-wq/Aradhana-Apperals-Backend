@@ -192,6 +192,25 @@ async function sendOTPEmail(email, otp, name) {
   });
 }
 
+async function sendPasswordResetOTPEmail(email, otp, name) {
+  await transporter.sendMail({
+    from: `"Indbasket" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: 'Password Reset OTP',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #e5e7eb;border-radius:12px;">
+        <h2 style="color:#111;">Password Reset Request</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>Your OTP to reset your password is:</p>
+        <div style="font-size:36px;font-weight:bold;color:#fe6603;letter-spacing:8px;text-align:center;padding:16px;background:#fff7ed;border-radius:8px;margin:16px 0;">
+          ${otp}
+        </div>
+        <p style="color:#6b7280;font-size:13px;">This OTP is valid for 10 minutes. Do not share it with anyone.</p>
+      </div>
+    `,
+  });
+}
+
 // Middleware to verify JWT
 function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
@@ -261,6 +280,71 @@ router.post('/verify-otp', async (req, res) => {
     const u = user.rows[0];
     const token = jwt.sign({ id: u.id, email, role: u.role }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: u });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+
+  try {
+    const user = await pool.query('SELECT name FROM users WHERE email=$1', [email]);
+    if (!user.rows.length) return res.status(404).json({ error: 'User not found' });
+
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await pool.query('DELETE FROM otps WHERE email=$1', [email]);
+    await pool.query('INSERT INTO otps (email, otp, expires_at) VALUES ($1,$2,$3)', [email, otp, expiresAt]);
+
+    await sendPasswordResetOTPEmail(email, otp, user.rows[0].name);
+    res.json({ message: 'OTP sent to your email' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/auth/verify-reset-otp
+router.post('/verify-reset-otp', async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) return res.status(400).json({ error: 'Email and OTP required' });
+
+  try {
+    const result = await pool.query(
+      'SELECT * FROM otps WHERE email=$1 AND otp=$2 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
+      [email, otp]
+    );
+    if (!result.rows.length) return res.status(400).json({ error: 'Invalid or expired OTP' });
+
+    res.json({ success: true, message: 'OTP verified' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) return res.status(400).json({ error: 'Missing required fields' });
+
+  try {
+    const result = await pool.query(
+      'SELECT * FROM otps WHERE email=$1 AND otp=$2 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
+      [email, otp]
+    );
+    if (!result.rows.length) return res.status(400).json({ error: 'Invalid or expired OTP' });
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password_hash=$1 WHERE email=$2', [hash, email]);
+    await pool.query('DELETE FROM otps WHERE email=$1', [email]);
+
+    res.json({ success: true, message: 'Password reset successfully' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

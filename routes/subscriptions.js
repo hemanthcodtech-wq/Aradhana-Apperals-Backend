@@ -63,9 +63,9 @@ router.post('/subscribe', vendorAuthMiddleware, async (req, res) => {
     expiresAt.setMonth(expiresAt.getMonth() + plan.months);
 
     await pool.query(
-      `INSERT INTO vendor_subscriptions (vendor_id, plan_id, plan_name, months, amount, payment_id, starts_at, expires_at)
-       VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7)`,
-      [req.vendorId, plan.id, plan.name, plan.months, plan.price, payment_id, expiresAt]
+      `INSERT INTO vendor_subscriptions (vendor_id, plan_id, plan_name, months, amount, payment_id, starts_at, expires_at, features)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7,$8)`,
+      [req.vendorId, plan.id, plan.name, plan.months, plan.price, payment_id, expiresAt, plan.features || {}]
     );
     await pool.query('UPDATE vendors SET subscription_expires_at=$1 WHERE id=$2', [expiresAt, req.vendorId]);
 
@@ -114,11 +114,11 @@ router.get('/admin/plans', authMiddleware, adminOnly, async (req, res) => {
 
 // ADMIN — PUT /api/subscriptions/admin/plans/:id
 router.put('/admin/plans/:id', authMiddleware, adminOnly, async (req, res) => {
-  const { price, is_active } = req.body;
+  const { price, is_active, features } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE subscription_plans SET price=$1, is_active=$2 WHERE id=$3 RETURNING *',
-      [price, is_active, req.params.id]
+      'UPDATE subscription_plans SET price=$1, is_active=$2, features=$3 WHERE id=$4 RETURNING *',
+      [price, is_active, features || {}, req.params.id]
     );
     res.json({ plan: result.rows[0] });
   } catch (err) {

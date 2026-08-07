@@ -37,6 +37,7 @@ app.use('/api/supportAuth', require('./routes/supportAuth').router);
 app.use('/api/support', require('./routes/support'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/offers', require('./routes/offers'));
+app.use('/api/advertisements', require('./routes/advertisements'));
 
 app.use((req, res) => res.status(404).json({ error: 'API route not found' }));
 

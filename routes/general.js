@@ -383,7 +383,28 @@ router.post('/coupon/verify', async (req, res) => {
 // GET /api/general/banners
 router.get('/banners', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM banners WHERE is_active = true ORDER BY created_at DESC');
+    const { type } = req.query;
+    let query = `
+      SELECT * FROM advertisements 
+      WHERE is_active = true 
+        AND (valid_from IS NULL OR valid_from <= NOW()) 
+        AND (valid_until IS NULL OR valid_until >= NOW())
+    `;
+    const params = [];
+    
+    if (type) {
+      // Allow multiple types comma-separated
+      const types = type.split(',');
+      query += ` AND type = ANY($1)`;
+      params.push(types);
+    } else {
+      // Default fallback if no type provided (for backward compatibility if any)
+      query += ` AND type IN ('homepage_top_banner', 'homepage_slider_banner')`;
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const result = await pool.query(query, params);
     res.json({ banners: result.rows });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

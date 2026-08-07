@@ -51,7 +51,30 @@ router.get('/stats', async (req, res) => {
 router.get('/products', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM products WHERE vendor_id = $1 ORDER BY created_at DESC', [req.vendorId]);
-    res.json({ products: result.rows });
+    const products = result.rows;
+    
+    const subRes = await pool.query('SELECT features FROM vendor_subscriptions WHERE vendor_id = $1 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1', [req.vendorId]);
+    let maxProducts = 10; // Default limit for free/no sub
+    let isUnlimited = false;
+
+    if (subRes.rows.length > 0) {
+      const features = typeof subRes.rows[0].features === 'string' ? JSON.parse(subRes.rows[0].features) : (subRes.rows[0].features || {});
+      if (features.productLimit === -1 || String(features.productLimit).toLowerCase() === 'unlimited') {
+        isUnlimited = true;
+      } else {
+        maxProducts = parseInt(features.productLimit) || maxProducts;
+      }
+    }
+
+    res.json({ 
+      products,
+      subscriptionStats: {
+        added: products.length,
+        max: maxProducts,
+        isUnlimited,
+        remaining: isUnlimited ? 'Unlimited' : Math.max(0, maxProducts - products.length)
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -61,6 +84,23 @@ router.post('/products', async (req, res) => {
   const { name, slug, short_description, description, category, image_url, images, custom_attributes, variants } = req.body;
 
   try {
+    // Enforce subscription product limit
+    const subRes = await pool.query(
+      'SELECT features FROM vendor_subscriptions WHERE vendor_id=$1 ORDER BY created_at DESC LIMIT 1',
+      [req.vendorId]
+    );
+    const productLimit = subRes.rows[0]?.features?.product_limit;
+    if (productLimit) {
+      const limit = parseInt(productLimit, 10);
+      if (!isNaN(limit)) {
+        const countRes = await pool.query('SELECT COUNT(*) FROM products WHERE vendor_id=$1', [req.vendorId]);
+        const count = parseInt(countRes.rows[0].count, 10);
+        if (count >= limit) {
+          return res.status(403).json({ error: `You have reached your subscription limit of ${limit} products.` });
+        }
+      }
+    }
+
     // Extract generic price and stock from custom_attributes for quick indexing if present
     const attrs = custom_attributes || {};
     
@@ -79,16 +119,16 @@ router.post('/products', async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO products (
-        name, slug, short_description, description, category, image_url, images, sizes, vendor_id, price, stock, custom_attributes
+        name, slug, short_description, description, category, image_url, images, sizes, vendor_id, price, stock, custom_attributes, status, is_active
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending', false
       ) RETURNING *`,
       [
         name, slug, short_description, description, category, image_url, JSON.stringify(images || []), JSON.stringify(variants || []), req.vendorId, price, stock,
         JSON.stringify(attrs)
       ]
     );
-    res.json({ product: result.rows[0] });
+    res.json({ product: result.rows[0], message: 'Product submitted for admin approval.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -186,7 +226,7 @@ const bcrypt = require('bcryptjs');
 router.get('/support-agents', async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, name, email, is_active, created_at FROM support_agents WHERE scope='vendor' AND vendor_id=$1 ORDER BY created_at DESC",
+      "SELECT id, name, email, is_active, created_at, access_pages FROM support_agents WHERE scope='vendor' AND vendor_id=$1 ORDER BY created_at DESC",
       [req.vendorId]
     );
     res.json({ agents: result.rows });
@@ -197,15 +237,16 @@ router.get('/support-agents', async (req, res) => {
 
 // POST /api/vendor/support-agents
 router.post('/support-agents', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, access_pages } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'name, email and password required' });
   try {
     const existing = await pool.query('SELECT id FROM support_agents WHERE email = $1', [email]);
     if (existing.rows.length > 0) return res.status(400).json({ error: 'Email already exists' });
     const password_hash = await bcrypt.hash(password, 10);
+    const pages = Array.isArray(access_pages) ? JSON.stringify(access_pages) : '[]';
     const result = await pool.query(
-      "INSERT INTO support_agents (name, email, password_hash, scope, vendor_id) VALUES ($1, $2, $3, 'vendor', $4) RETURNING id, name, email, is_active, created_at",
-      [name, email, password_hash, req.vendorId]
+      "INSERT INTO support_agents (name, email, password_hash, scope, vendor_id, access_pages) VALUES ($1, $2, $3, 'vendor', $4, $5) RETURNING id, name, email, is_active, created_at, access_pages",
+      [name, email, password_hash, req.vendorId, pages]
     );
     res.json({ agent: result.rows[0] });
   } catch (err) {
@@ -217,7 +258,7 @@ router.post('/support-agents', async (req, res) => {
 router.put('/support-agents/:id/toggle', async (req, res) => {
   try {
     const result = await pool.query(
-      "UPDATE support_agents SET is_active = NOT is_active WHERE id=$1 AND scope='vendor' AND vendor_id=$2 RETURNING id, name, email, is_active",
+      "UPDATE support_agents SET is_active = NOT is_active WHERE id=$1 AND scope='vendor' AND vendor_id=$2 RETURNING id, name, email, is_active, access_pages",
       [req.params.id, req.vendorId]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Agent not found' });
