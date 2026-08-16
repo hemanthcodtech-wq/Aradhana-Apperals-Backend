@@ -29,7 +29,7 @@ async function sendOrderEmailToAdmin(orderNumber, total, address, items, payment
     `).join('');
 
     await transporter.sendMail({
-      from: `"Indbasket" <${process.env.EMAIL_USER}>`,
+      from: `"Zesto" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_USER,
       subject: `🛒 New Order Received - ${orderNumber}`,
       html: `
@@ -81,7 +81,7 @@ async function sendOrderEmailToCustomer(email, orderNumber, total, address, item
     `).join('');
 
     await transporter.sendMail({
-      from: `"Indbasket" <${process.env.EMAIL_USER}>`,
+      from: `"Zesto" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `✅ Order Confirmed - ${orderNumber}`,
       html: `
@@ -134,7 +134,7 @@ async function sendOrderEmailToVendor(vendorEmail, vendorName, orderNumber, vend
     `).join('');
 
     await transporter.sendMail({
-      from: `"Indbasket" <${process.env.EMAIL_USER}>`,
+      from: `"Zesto" <${process.env.EMAIL_USER}>`,
       to: vendorEmail,
       subject: `🎉 New Order for Your Products - ${orderNumber}`,
       html: `
@@ -194,7 +194,7 @@ async function sendOTPEmail(email, otp, name) {
 
 async function sendPasswordResetOTPEmail(email, otp, name) {
   await transporter.sendMail({
-    from: `"Indbasket" <${process.env.EMAIL_USER}>`,
+    from: `"Zesto" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: 'Password Reset OTP',
     html: `

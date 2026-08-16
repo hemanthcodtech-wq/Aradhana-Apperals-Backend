@@ -15,12 +15,12 @@ function generateOTP() {
 
 async function sendOTPEmail(email, otp, name) {
   await transporter.sendMail({
-    from: `"Indbasket Vendor" <${process.env.EMAIL_USER}>`,
+    from: `"Zesto Vendor" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: 'Your OTP for Vendor Signup',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #fe6603;border-radius:12px;">
-        <h2 style="color:#fe6603;">Welcome to Indbasket Vendor Portal</h2>
+        <h2 style="color:#fe6603;">Welcome to Zesto Vendor Portal</h2>
         <p>Hi <strong>${name}</strong>,</p>
         <p>Your OTP for verifying your vendor application is:</p>
         <div style="font-size:36px;font-weight:bold;color:#ea580c;letter-spacing:8px;text-align:center;padding:16px;background:#fff7ed;border-radius:8px;margin:16px 0;">
@@ -34,7 +34,7 @@ async function sendOTPEmail(email, otp, name) {
 
 async function sendVendorPasswordResetOTPEmail(email, otp, name) {
   await transporter.sendMail({
-    from: `"Indbasket Vendor" <${process.env.EMAIL_USER}>`,
+    from: `"Zesto Vendor" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: 'Vendor Password Reset OTP',
     html: `

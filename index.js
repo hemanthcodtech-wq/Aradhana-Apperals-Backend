@@ -11,7 +11,7 @@ app.use(cors({
     const allowed = [
       'http://localhost:5173',
       'http://localhost:3000',
-      'https://indbasket.vercel.app',
+      'https://zesto-steel.vercel.app',
       process.env.FRONTEND_URL,
     ].filter(Boolean);
 

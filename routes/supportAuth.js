@@ -15,7 +15,7 @@ function generateOTP() {
 
 async function sendSupportPasswordResetOTPEmail(email, otp, name) {
   await transporter.sendMail({
-    from: `"Indbasket Support" <${process.env.EMAIL_USER}>`,
+    from: `"Zesto Support" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: 'Support Password Reset OTP',
     html: `
