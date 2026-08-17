@@ -12,9 +12,9 @@ async function seed() {
     const catResult = await pool.query(`
       INSERT INTO categories (name, models, image_url)
       VALUES 
-        ('Snacks', '["Mixture", "Murukku"]', 'https://res.cloudinary.com/rhprdf7l/image/upload/v1/snacks.jpg'),
-        ('Sweets', '["Ladoo", "Halwa"]', 'https://res.cloudinary.com/rhprdf7l/image/upload/v1/sweets.jpg'),
-        ('Pickles', '["Mango", "Tomato"]', 'https://res.cloudinary.com/rhprdf7l/image/upload/v1/pickles.jpg')
+        ('Party Wear', '["Maxi", "Midi", "Gown"]', 'https://res.cloudinary.com/demo/image/upload/sample.jpg'),
+        ('Casual Wear', '["A-Line", "Shift", "Wrap"]', 'https://res.cloudinary.com/demo/image/upload/sample.jpg'),
+        ('Ethnic Wear', '["Anarkali", "Kurti", "Lehenga"]', 'https://res.cloudinary.com/demo/image/upload/sample.jpg')
       RETURNING *;
     `);
 
@@ -23,35 +23,35 @@ async function seed() {
     // 2. Insert Products
     const productsData = [
       {
-        name: 'Spicy Mixture',
-        description: 'Authentic Andhra style spicy mixture with premium peanuts and garlic.',
-        category: 'Snacks',
-        model: 'Mixture',
-        sizes: JSON.stringify([{ size: '250g', price: 120 }, { size: '500g', price: 220 }, { size: '1kg', price: 400 }]),
-        image_url: 'https://res.cloudinary.com/rhprdf7l/image/upload/v1/mixture.jpg'
+        name: 'Red Velvet Party Gown',
+        description: 'Elegant red velvet gown perfect for evening parties.',
+        category: 'Party Wear',
+        model: 'Gown',
+        sizes: JSON.stringify([{ size: 'S', price: 2500 }, { size: 'M', price: 2500 }, { size: 'L', price: 2500 }]),
+        image_url: 'https://res.cloudinary.com/demo/image/upload/sample.jpg'
       },
       {
-        name: 'Ghee Boondi Ladoo',
-        description: 'Melt-in-mouth boondi ladoo made with pure desi ghee.',
-        category: 'Sweets',
-        model: 'Ladoo',
-        sizes: JSON.stringify([{ size: '250g', price: 180 }, { size: '500g', price: 340 }]),
-        image_url: 'https://res.cloudinary.com/rhprdf7l/image/upload/v1/ladoo.jpg'
+        name: 'Floral Casual Midi',
+        description: 'Breezy floral midi dress for a perfect summer day.',
+        category: 'Casual Wear',
+        model: 'Midi',
+        sizes: JSON.stringify([{ size: 'S', price: 1200 }, { size: 'M', price: 1200 }]),
+        image_url: 'https://res.cloudinary.com/demo/image/upload/sample.jpg'
       },
       {
-        name: 'Avakaya Mango Pickle',
-        description: 'Traditional summer special raw mango pickle mixed with mustard powder and sesame oil.',
-        category: 'Pickles',
-        model: 'Mango',
-        sizes: JSON.stringify([{ size: '250g', price: 150 }, { size: '500g', price: 280 }]),
-        image_url: 'https://res.cloudinary.com/rhprdf7l/image/upload/v1/mango.jpg'
+        name: 'Silk Anarkali Suit',
+        description: 'Traditional silk Anarkali with intricate embroidery.',
+        category: 'Ethnic Wear',
+        model: 'Anarkali',
+        sizes: JSON.stringify([{ size: 'M', price: 3500 }, { size: 'L', price: 3500 }, { size: 'XL', price: 3500 }]),
+        image_url: 'https://res.cloudinary.com/demo/image/upload/sample.jpg'
       }
     ];
 
     for (let p of productsData) {
       await pool.query(`
         INSERT INTO products (name, description, category, model, sizes, image_url, stock, is_active)
-        VALUES ($1, $2, $3, $4, $5, $6, 100, true)
+        VALUES ($1, $2, $3, $4, $5, $6, 50, true)
       `, [p.name, p.description, p.category, p.model, p.sizes, p.image_url]);
     }
     
