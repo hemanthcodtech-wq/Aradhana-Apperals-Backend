@@ -10,6 +10,10 @@ pool.connect()
   .then(() => console.log('✅ Neon DB connected'))
   .catch(err => console.error('❌ DB error:', err.message));
 
+pool.on('connect', client => {
+  client.query('SET search_path TO public, neon_auth');
+});
+
 pool.on('error', (err, client) => {
   console.error('Unexpected error on idle client', err);
 });
