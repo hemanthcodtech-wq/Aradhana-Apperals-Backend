@@ -152,23 +152,32 @@ router.get('/products', authMiddleware, adminOnly, async (req, res) => {
 });
 
 router.post('/products', authMiddleware, adminOnly, async (req, res) => {
-  const { name, slug, short_description, description, category, image_url, images, custom_attributes, vendor_id, variants } = req.body;
+  const { 
+    name, description, product_code, category, model, is_active, 
+    is_bestseller, is_trending, is_offer, is_festive, allow_reviews, 
+    variants, details, reviews, image_url, images, slug, short_description, vendor_id 
+  } = req.body;
   
   try {
-    const attrs = custom_attributes || {};
     let price = 0;
     let stock = 0;
-    
-    for (const key of Object.keys(attrs)) {
-      if (key.toLowerCase().includes('price')) price = parseFloat(attrs[key]) || price;
-      if (key.toLowerCase().includes('stock') || key.toLowerCase() === 'quantity') stock = parseInt(attrs[key]) || stock;
+    if (variants && variants.length > 0) {
+      if (variants[0].sizes && variants[0].sizes.length > 0) {
+        price = variants[0].sizes[0].our_price || variants[0].sizes[0].mrp || 0;
+        stock = variants.reduce((acc, v) => acc + (v.sizes || []).reduce((sAcc, s) => sAcc + (Number(s.stock) || 0), 0), 0);
+      }
     }
 
     const result = await pool.query(
       `INSERT INTO products 
-       (name, slug, short_description, description, category, image_url, images, sizes, custom_attributes, price, stock, vendor_id) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-      [name, slug, short_description, description, category, image_url, JSON.stringify(images || []), JSON.stringify(variants || []), JSON.stringify(attrs), price, stock, vendor_id || null]
+       (name, description, product_code, category, model, is_active, is_bestseller, is_trending, is_offer, is_festive, allow_reviews, variants, details, reviews, image_url, images, slug, short_description, price, stock, vendor_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING *`,
+      [
+        name, description, product_code, category, model, 
+        is_active ?? true, is_bestseller ?? false, is_trending ?? false, is_offer ?? false, is_festive ?? false, allow_reviews ?? true,
+        JSON.stringify(variants || []), JSON.stringify(details || []), JSON.stringify(reviews || []), 
+        image_url, JSON.stringify(images || []), slug, short_description, price, stock, vendor_id || null
+      ]
     );
     res.json({ product: result.rows[0] });
   } catch (err) {
@@ -177,21 +186,35 @@ router.post('/products', authMiddleware, adminOnly, async (req, res) => {
 });
 
 router.put('/products/:id', authMiddleware, adminOnly, async (req, res) => {
-  const { name, slug, short_description, description, category, image_url, images, custom_attributes, vendor_id, variants } = req.body;
+  const { 
+    name, description, product_code, category, model, is_active, 
+    is_bestseller, is_trending, is_offer, is_festive, allow_reviews, 
+    variants, details, reviews, image_url, images, slug, short_description, vendor_id 
+  } = req.body;
   try {
-    const attrs = custom_attributes || {};
     let price = 0;
     let stock = 0;
-    
-    for (const key of Object.keys(attrs)) {
-      if (key.toLowerCase().includes('price')) price = parseFloat(attrs[key]) || price;
-      if (key.toLowerCase().includes('stock') || key.toLowerCase() === 'quantity') stock = parseInt(attrs[key]) || stock;
+    if (variants && variants.length > 0) {
+      if (variants[0].sizes && variants[0].sizes.length > 0) {
+        price = variants[0].sizes[0].our_price || variants[0].sizes[0].mrp || 0;
+        stock = variants.reduce((acc, v) => acc + (v.sizes || []).reduce((sAcc, s) => sAcc + (Number(s.stock) || 0), 0), 0);
+      }
     }
 
     const result = await pool.query(
-      'UPDATE products SET name=$1, slug=$2, short_description=$3, description=$4, category=$5, image_url=$6, images=$7, sizes=$8, custom_attributes=$9, price=$10, stock=$11, vendor_id=$12 WHERE id=$13 RETURNING *',
-      [name, slug, short_description, description, category, image_url, JSON.stringify(images || []), JSON.stringify(variants || []), JSON.stringify(attrs), price, stock, vendor_id || null, req.params.id]
+      `UPDATE products SET 
+        name=$1, description=$2, product_code=$3, category=$4, model=$5, 
+        is_active=$6, is_bestseller=$7, is_trending=$8, is_offer=$9, is_festive=$10, allow_reviews=$11, 
+        variants=$12, details=$13, reviews=$14, image_url=$15, images=$16, slug=$17, short_description=$18, price=$19, stock=$20, vendor_id=$21
+       WHERE id=$22 RETURNING *`,
+      [
+        name, description, product_code, category, model, 
+        is_active ?? true, is_bestseller ?? false, is_trending ?? false, is_offer ?? false, is_festive ?? false, allow_reviews ?? true,
+        JSON.stringify(variants || []), JSON.stringify(details || []), JSON.stringify(reviews || []), 
+        image_url, JSON.stringify(images || []), slug, short_description, price, stock, vendor_id || null, req.params.id
+      ]
     );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
     res.json({ product: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
