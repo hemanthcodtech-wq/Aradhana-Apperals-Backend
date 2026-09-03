@@ -23,7 +23,7 @@ async function sendOrderEmailToAdmin(orderNumber, total, address, items, payment
     `).join('');
 
     await transporter.sendMail({
-      from: `"Zesto" <${process.env.EMAIL_USER}>`,
+      from: `"Aradhana Apparels" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_USER,
       subject: `🛒 New Order Received - ${orderNumber}`,
       html: `
@@ -75,7 +75,7 @@ async function sendOrderEmailToCustomer(email, orderNumber, total, address, item
     `).join('');
 
     await transporter.sendMail({
-      from: `"Zesto" <${process.env.EMAIL_USER}>`,
+      from: `"Aradhana Apparels" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `✅ Order Confirmed - ${orderNumber}`,
       html: `
@@ -128,7 +128,7 @@ async function sendOrderEmailToVendor(vendorEmail, vendorName, orderNumber, vend
     `).join('');
 
     await transporter.sendMail({
-      from: `"Zesto" <${process.env.EMAIL_USER}>`,
+      from: `"Aradhana Apparels" <${process.env.EMAIL_USER}>`,
       to: vendorEmail,
       subject: `🎉 New Order for Your Products - ${orderNumber}`,
       html: `
