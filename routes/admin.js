@@ -253,6 +253,20 @@ router.post('/banners', authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
+router.put('/banners/:id', authMiddleware, adminOnly, async (req, res) => {
+  const { title, image_url, link_url, is_active } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE banners SET title=, image_url=, link_url=, is_active= WHERE id= RETURNING *',
+      [title, image_url, link_url, is_active ?? true, req.params.id]
+    );
+    res.json({ banner: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 router.delete('/banners/:id', authMiddleware, adminOnly, async (req, res) => {
   try {
     await pool.query('DELETE FROM banners WHERE id=$1', [req.params.id]);
@@ -584,6 +598,20 @@ router.put('/product-requests/:id/reject', authMiddleware, adminOnly, async (req
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
     res.json({ product: result.rows[0], message: 'Product rejected.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// --- Dashboard Stats ---
+router.get('/dashboard/stats', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const ordersResult = await pool.query('SELECT COUNT(*) as total_orders, COALESCE(SUM(total), 0) as total_revenue FROM orders');
+    res.json({
+      totalOrders: parseInt(ordersResult.rows[0].total_orders || 0, 10),
+      totalRevenue: parseFloat(ordersResult.rows[0].total_revenue || 0)
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

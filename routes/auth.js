@@ -34,7 +34,7 @@ async function sendOrderEmailToAdmin(orderNumber, total, address, items, payment
       subject: `🛒 New Order Received - ${orderNumber}`,
       html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#fe6603,#ff8534);padding:24px;text-align:center;">
+          <div style="background:linear-gradient(135deg,#050B14,#0C182A);padding:24px;text-align:center;">
             <h1 style="color:#fff;margin:0;font-size:22px;">New Order Received!</h1>
             <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:14px;">${orderNumber}</p>
           </div>
@@ -86,14 +86,14 @@ async function sendOrderEmailToCustomer(email, orderNumber, total, address, item
       subject: `✅ Order Confirmed - ${orderNumber}`,
       html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#10b981,#059669);padding:28px;text-align:center;">
+          <div style="background:linear-gradient(135deg,#050B14,#0C182A);padding:28px;text-align:center;">
             <div style="font-size:40px;margin-bottom:8px;">✅</div>
             <h1 style="color:#fff;margin:0;font-size:22px;">Order Confirmed!</h1>
             <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:14px;">Thank you for your order, ${addr?.name || 'Customer'}!</p>
           </div>
           <div style="padding:24px;">
-            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;margin-bottom:20px;text-align:center;">
-              <p style="margin:0;font-size:13px;color:#166534;">Order Number</p>
+            <div style="background:#e6eae9;border:1px solid #022A21;border-radius:8px;padding:14px;margin-bottom:20px;text-align:center;">
+              <p style="margin:0;font-size:13px;color:#022A21;">Order Number</p>
               <p style="margin:4px 0 0;font-size:18px;font-weight:bold;color:#111;letter-spacing:1px;">${orderNumber}</p>
             </div>
             <h3 style="margin:0 0 12px;color:#111;font-size:15px;">Items Ordered</h3>
@@ -103,12 +103,16 @@ async function sendOrderEmailToCustomer(email, orderNumber, total, address, item
             </table>
             <div style="background:#f9fafb;border-radius:8px;padding:14px;margin-top:16px;">
               <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">Payment</span><span style="font-weight:600;">${paymentMethod === 'cod' ? 'Cash on Delivery' : 'Paid Online'}</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:18px;"><span style="font-weight:bold;color:#111;">Total</span><span style="font-weight:bold;color:#059669;">₹${parseFloat(total).toLocaleString()}</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:18px;"><span style="font-weight:bold;color:#111;">Total</span><span style="font-weight:bold;color:#022A21;">₹${parseFloat(total).toLocaleString()}</span></div>
             </div>
             <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
             <h3 style="margin:0 0 8px;color:#111;font-size:15px;">Delivering To</h3>
             <p style="margin:4px 0;color:#555;line-height:1.6;">${addr?.name || ''}<br>${addr?.addressLine1 || ''} ${addr?.addressLine2 || ''}<br>${addr?.city || ''}, ${addr?.state || ''} - ${addr?.pincode || ''}<br>📞 ${addr?.mobile || ''}</p>
-            <div style="text-align:center;margin-top:24px;">
+            <div style="text-align:center;margin-top:24px;border-top:1px dashed #eee;padding-top:16px;">
+              <p style="color:#111;font-size:14px;font-weight:bold;margin:0 0 4px;">Aradhana Apparels</p>
+              <p style="color:#555;font-size:12px;margin:0 0 2px;line-height:1.5;">1st Floar #114, Gayatri Kutira<br>Junjappa Temple Road, Shettihalli Bangalore-560015</p>
+              <p style="color:#555;font-size:12px;margin:0 0 2px;"><strong>GSTIN No.:</strong> 29AIYPA6523E2Z1</p>
+              <p style="color:#555;font-size:12px;margin:0 0 12px;"><strong>Phone:</strong> +91 73534 73534</p>
               <p style="color:#888;font-size:12px;margin:0;">Need help? Reply to this email or contact us.</p>
             </div>
           </div>
@@ -139,14 +143,14 @@ async function sendOrderEmailToVendor(vendorEmail, vendorName, orderNumber, vend
       subject: `🎉 New Order for Your Products - ${orderNumber}`,
       html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);padding:28px;text-align:center;">
+          <div style="background:linear-gradient(135deg,#050B14,#0C182A);padding:28px;text-align:center;">
             <div style="font-size:40px;margin-bottom:8px;">🎉</div>
             <h1 style="color:#fff;margin:0;font-size:22px;">New Order for Your Products!</h1>
             <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:14px;">Hi ${vendorName}, you have a new sale!</p>
           </div>
           <div style="padding:24px;">
-            <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:14px;margin-bottom:20px;text-align:center;">
-              <p style="margin:0;font-size:13px;color:#5b21b6;">Order Number</p>
+            <div style="background:#e6eae9;border:1px solid #022A21;border-radius:8px;padding:14px;margin-bottom:20px;text-align:center;">
+              <p style="margin:0;font-size:13px;color:#022A21;">Order Number</p>
               <p style="margin:4px 0 0;font-size:18px;font-weight:bold;color:#111;letter-spacing:1px;">${orderNumber}</p>
             </div>
             <h3 style="margin:0 0 12px;color:#111;font-size:15px;">Your Products in This Order</h3>
@@ -177,13 +181,13 @@ async function sendOTPEmail(email, otp, name) {
   await transporter.sendMail({
     from: `"Aradhana Apparels" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Your OTP for Moksha Mandir Signup',
+    subject: 'Your OTP for Aradhana Apparels Signup',
     html: `
-      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #f0e0c0;border-radius:12px;">
-        <h2 style="color:#b45309;">🙏 Welcome to Moksha Mandir</h2>
+      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #022A21;border-radius:12px;">
+        <h2 style="color:#050B14;">🙏 Welcome to Aradhana Apparels</h2>
         <p>Hi <strong>${name}</strong>,</p>
         <p>Your OTP for account verification is:</p>
-        <div style="font-size:36px;font-weight:bold;color:#ea580c;letter-spacing:8px;text-align:center;padding:16px;background:#fff7ed;border-radius:8px;margin:16px 0;">
+        <div style="font-size:36px;font-weight:bold;color:#022A21;letter-spacing:8px;text-align:center;padding:16px;background:#e6eae9;border-radius:8px;margin:16px 0;">
           ${otp}
         </div>
         <p style="color:#6b7280;font-size:13px;">This OTP is valid for 10 minutes. Do not share it with anyone.</p>
@@ -202,7 +206,7 @@ async function sendPasswordResetOTPEmail(email, otp, name) {
         <h2 style="color:#111;">Password Reset Request</h2>
         <p>Hi <strong>${name}</strong>,</p>
         <p>Your OTP to reset your password is:</p>
-        <div style="font-size:36px;font-weight:bold;color:#fe6603;letter-spacing:8px;text-align:center;padding:16px;background:#fff7ed;border-radius:8px;margin:16px 0;">
+        <div style="font-size:36px;font-weight:bold;color:#022A21;letter-spacing:8px;text-align:center;padding:16px;background:#e6eae9;border-radius:8px;margin:16px 0;">
           ${otp}
         </div>
         <p style="color:#6b7280;font-size:13px;">This OTP is valid for 10 minutes. Do not share it with anyone.</p>

@@ -28,7 +28,7 @@ async function sendOrderEmailToAdmin(orderNumber, total, address, items, payment
       subject: `🛒 New Order Received - ${orderNumber}`,
       html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#fe6603,#ff8534);padding:24px;text-align:center;">
+          <div style="background:linear-gradient(135deg,#050B14,#0C182A);padding:24px;text-align:center;">
             <h1 style="color:#fff;margin:0;font-size:22px;">New Order Received!</h1>
             <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:14px;">${orderNumber}</p>
           </div>
@@ -80,14 +80,14 @@ async function sendOrderEmailToCustomer(email, orderNumber, total, address, item
       subject: `✅ Order Confirmed - ${orderNumber}`,
       html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#10b981,#059669);padding:28px;text-align:center;">
+          <div style="background:linear-gradient(135deg,#050B14,#0C182A);padding:28px;text-align:center;">
             <div style="font-size:40px;margin-bottom:8px;">✅</div>
             <h1 style="color:#fff;margin:0;font-size:22px;">Order Confirmed!</h1>
             <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:14px;">Thank you for your order, ${addr?.name || 'Customer'}!</p>
           </div>
           <div style="padding:24px;">
-            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;margin-bottom:20px;text-align:center;">
-              <p style="margin:0;font-size:13px;color:#166534;">Order Number</p>
+            <div style="background:#fcfaf5;border:1px solid #D4AF37;border-radius:8px;padding:14px;margin-bottom:20px;text-align:center;">
+              <p style="margin:0;font-size:13px;color:#D4AF37;">Order Number</p>
               <p style="margin:4px 0 0;font-size:18px;font-weight:bold;color:#111;letter-spacing:1px;">${orderNumber}</p>
             </div>
             <h3 style="margin:0 0 12px;color:#111;font-size:15px;">Items Ordered</h3>
@@ -97,12 +97,16 @@ async function sendOrderEmailToCustomer(email, orderNumber, total, address, item
             </table>
             <div style="background:#f9fafb;border-radius:8px;padding:14px;margin-top:16px;">
               <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#666;">Payment</span><span style="font-weight:600;">${paymentMethod === 'cod' ? 'Cash on Delivery' : 'Paid Online'}</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:18px;"><span style="font-weight:bold;color:#111;">Total</span><span style="font-weight:bold;color:#059669;">₹${parseFloat(total).toLocaleString()}</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:18px;"><span style="font-weight:bold;color:#111;">Total</span><span style="font-weight:bold;color:#D4AF37;">₹${parseFloat(total).toLocaleString()}</span></div>
             </div>
             <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
             <h3 style="margin:0 0 8px;color:#111;font-size:15px;">Delivering To</h3>
             <p style="margin:4px 0;color:#555;line-height:1.6;">${addr?.name || ''}<br>${addr?.addressLine1 || ''} ${addr?.addressLine2 || ''}<br>${addr?.city || ''}, ${addr?.state || ''} - ${addr?.pincode || ''}<br>📞 ${addr?.mobile || ''}</p>
-            <div style="text-align:center;margin-top:24px;">
+            <div style="text-align:center;margin-top:24px;border-top:1px dashed #eee;padding-top:16px;">
+              <p style="color:#111;font-size:14px;font-weight:bold;margin:0 0 4px;">Aradhana Apparels</p>
+              <p style="color:#555;font-size:12px;margin:0 0 2px;line-height:1.5;">1st Floar #114, Gayatri Kutira<br>Junjappa Temple Road, Shettihalli Bangalore-560015</p>
+              <p style="color:#555;font-size:12px;margin:0 0 2px;"><strong>GSTIN No.:</strong> 29AIYPA6523E2Z1</p>
+              <p style="color:#555;font-size:12px;margin:0 0 12px;"><strong>Phone:</strong> +91 73534 73534</p>
               <p style="color:#888;font-size:12px;margin:0;">Need help? Reply to this email or contact us.</p>
             </div>
           </div>
@@ -133,14 +137,14 @@ async function sendOrderEmailToVendor(vendorEmail, vendorName, orderNumber, vend
       subject: `🎉 New Order for Your Products - ${orderNumber}`,
       html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);padding:28px;text-align:center;">
+          <div style="background:linear-gradient(135deg,#050B14,#0C182A);padding:28px;text-align:center;">
             <div style="font-size:40px;margin-bottom:8px;">🎉</div>
             <h1 style="color:#fff;margin:0;font-size:22px;">New Order for Your Products!</h1>
             <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:14px;">Hi ${vendorName}, you have a new sale!</p>
           </div>
           <div style="padding:24px;">
-            <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:14px;margin-bottom:20px;text-align:center;">
-              <p style="margin:0;font-size:13px;color:#5b21b6;">Order Number</p>
+            <div style="background:#fcfaf5;border:1px solid #D4AF37;border-radius:8px;padding:14px;margin-bottom:20px;text-align:center;">
+              <p style="margin:0;font-size:13px;color:#D4AF37;">Order Number</p>
               <p style="margin:4px 0 0;font-size:18px;font-weight:bold;color:#111;letter-spacing:1px;">${orderNumber}</p>
             </div>
             <h3 style="margin:0 0 12px;color:#111;font-size:15px;">Your Products in This Order</h3>
@@ -383,32 +387,13 @@ router.post('/coupon/verify', async (req, res) => {
 // GET /api/general/banners
 router.get('/banners', async (req, res) => {
   try {
-    const { type } = req.query;
-    let query = `
-      SELECT * FROM advertisements 
-      WHERE is_active = true 
-        AND (valid_from IS NULL OR valid_from <= NOW()) 
-        AND (valid_until IS NULL OR valid_until >= NOW())
-    `;
-    const params = [];
-    
-    if (type) {
-      // Allow multiple types comma-separated
-      const types = type.split(',');
-      query += ` AND type = ANY($1)`;
-      params.push(types);
-    } else {
-      // Default fallback if no type provided (for backward compatibility if any)
-      query += ` AND type IN ('homepage_top_banner', 'homepage_slider_banner')`;
-    }
-    
-    query += ' ORDER BY created_at DESC';
-    
-    const result = await pool.query(query, params);
+    const result = await pool.query('SELECT * FROM banners WHERE is_active = true ORDER BY created_at DESC');
     res.json({ banners: result.rows });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
 module.exports = router;
+

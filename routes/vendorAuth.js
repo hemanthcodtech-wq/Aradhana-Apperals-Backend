@@ -20,10 +20,10 @@ async function sendOTPEmail(email, otp, name) {
     subject: 'Your OTP for Vendor Signup',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #fe6603;border-radius:12px;">
-        <h2 style="color:#fe6603;">Welcome to Zesto Vendor Portal</h2>
+        <h2 style="color:#D4AF37;">Welcome to Zesto Vendor Portal</h2>
         <p>Hi <strong>${name}</strong>,</p>
         <p>Your OTP for verifying your vendor application is:</p>
-        <div style="font-size:36px;font-weight:bold;color:#ea580c;letter-spacing:8px;text-align:center;padding:16px;background:#fff7ed;border-radius:8px;margin:16px 0;">
+        <div style="font-size:36px;font-weight:bold;color:#D4AF37;letter-spacing:8px;text-align:center;padding:16px;background:#fcfaf5;border-radius:8px;margin:16px 0;">
           ${otp}
         </div>
         <p style="color:#6b7280;font-size:13px;">This OTP is valid for 10 minutes. Do not share it with anyone.</p>
@@ -39,10 +39,10 @@ async function sendVendorPasswordResetOTPEmail(email, otp, name) {
     subject: 'Vendor Password Reset OTP',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #fe6603;border-radius:12px;">
-        <h2 style="color:#fe6603;">Vendor Password Reset Request</h2>
+        <h2 style="color:#D4AF37;">Vendor Password Reset Request</h2>
         <p>Hi <strong>${name}</strong>,</p>
         <p>Your OTP to reset your password is:</p>
-        <div style="font-size:36px;font-weight:bold;color:#fe6603;letter-spacing:8px;text-align:center;padding:16px;background:#fff7ed;border-radius:8px;margin:16px 0;">
+        <div style="font-size:36px;font-weight:bold;color:#D4AF37;letter-spacing:8px;text-align:center;padding:16px;background:#fcfaf5;border-radius:8px;margin:16px 0;">
           ${otp}
         </div>
         <p style="color:#6b7280;font-size:13px;">This OTP is valid for 10 minutes. Do not share it with anyone.</p>
